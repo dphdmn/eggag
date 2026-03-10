@@ -29,7 +29,7 @@
 
         #app {
             width: 100%;
-            max-width: 400px;
+            max-width: 360px;
             aspect-ratio: 9 / 16;
             position: relative;
             overflow: hidden;
@@ -122,9 +122,33 @@
             box-shadow: 0 2px 0 #aa1133;
         }
 
+        #mute-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            margin: 0;
+            font-size: 24px;
+            background: #333;
+            border: 3px solid #aaa;
+            box-shadow: 0 4px 0 #111;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+        }
+
+        #mute-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #111;
+        }
+
         #game-panel {
             justify-content: flex-start;
-            padding-top: 80px;
+            padding-top: 60px;
             position: relative;
         }
 
@@ -135,7 +159,7 @@
             background: url('board.png') no-repeat center center;
             background-size: 100% 100%;
             box-shadow: 0 0 20px rgba(255,255,255,0.6);
-            margin: 20px auto;
+            margin: 10px auto;
             touch-action: none;
         }
 
@@ -153,7 +177,7 @@
 
         #game-header {
             position: absolute;
-            top: 40px;
+            top: 20px;
             width: 360px;
             text-align: center;
             font-size: 18px;
@@ -165,7 +189,7 @@
 
         #score-display {
             position: absolute;
-            bottom: 115px;
+            bottom: 95px;
             width: 360px;
             text-align: center;
             font-size: 28px;
@@ -241,6 +265,8 @@
 <body>
     <div id="app">
         <div id="bg"></div>
+        
+        <button id="mute-btn" onclick="toggleMute()">🔊</button>
 
         <div id="panels">
             <div class="panel active" id="menu-panel">
@@ -288,6 +314,8 @@
         const APP = document.getElementById('app');
         const CANVAS = document.getElementById('canvas');
         const CTX = CANVAS.getContext('2d', { alpha: true });
+        const MUSIC = document.getElementById('music');
+        const MUTE_BTN = document.getElementById('mute-btn');
         
         const WIDTH = 330;
         const HEIGHT = 330;
@@ -314,6 +342,13 @@
         let isDragging = false;
         let highScore = localStorage.getItem('eggagHigh') || 0;
         let isTransitioning = false;
+        let isMuted = false;
+
+        function toggleMute() {
+            isMuted = !isMuted;
+            MUSIC.muted = isMuted;
+            MUTE_BTN.textContent = isMuted ? '🔇' : '🔊';
+        }
 
         function getCanvasCoords(e) {
             const rect = CANVAS.getBoundingClientRect();
@@ -338,6 +373,7 @@
         }
 
         function playSound(src) {
+            if (isMuted) return;
             const audio = new Audio(src);
             audio.volume = 0.5;
             audio.play().catch(() => {});
@@ -611,7 +647,7 @@
         APP.addEventListener('touchmove', (e) => { if (e.target === APP) e.preventDefault(); }, { passive: false });
 
         document.addEventListener('click', e => {
-            if (e.target.tagName === 'BUTTON') {
+            if (e.target.tagName === 'BUTTON' && e.target.id !== 'mute-btn') {
                 playSound('click.mp3');
             }
         });
@@ -822,11 +858,11 @@
         window.backToMenu = backToMenu;
         window.restartGame = restartGame;
         window.exitToMenu = exitToMenu;
+        window.toggleMute = toggleMute;
 
         document.addEventListener('click', function initMusic() {
-            const musicEl = document.getElementById('music');
-            musicEl.volume = 0.4;
-            musicEl.play().catch(() => {});
+            MUSIC.volume = 0.4;
+            MUSIC.play().catch(() => {});
             document.removeEventListener('click', initMusic);
         }, { once: true });
 
