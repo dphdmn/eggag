@@ -2,10 +2,16 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Eggag</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        * {
+            box-sizing: border-box;
+            touch-action: none; /* prevents pull-to-refresh and panning */
+            -webkit-tap-highlight-color: transparent;
+        }
 
         body {
             margin: 0;
@@ -14,37 +20,43 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
+            min-height: 100dvh;
             overflow: hidden;
             font-family: 'Press Start 2P', sans-serif;
+            touch-action: none;
         }
 
         #app {
-            width: 360px;
-            height: 640px;
+            width: 100%;
+            max-width: 400px;
+            aspect-ratio: 9 / 16;
             position: relative;
             overflow: hidden;
             background: #111;
             user-select: none;
             -webkit-user-select: none;
+            border-radius: 0;
+            box-shadow: 0 0 20px rgba(255,255,255,0.2);
         }
 
         #bg {
             position: absolute;
             top: 0;
             left: 0;
-            width: 360px;
-            height: 640px;
+            width: 100%;
+            height: 100%;
             background-image: url('background.png');
-            background-size: 640px 640px;
+            background-size: auto 100%;
             background-repeat: repeat-x;
             animation: scrollBg 10s linear infinite;
             z-index: 1;
+            pointer-events: none;
         }
 
         @keyframes scrollBg {
             from { background-position-x: 0; }
-            to { background-position-x: -640px; }
+            to { background-position-x: -100%; }
         }
 
         #panels {
@@ -54,6 +66,7 @@
             width: 100%;
             height: 100%;
             z-index: 2;
+            touch-action: none;
         }
 
         .panel {
@@ -69,6 +82,9 @@
             color: white;
             transition: transform 2s cubic-bezier(0.25, 0.1, 0.25, 1);
             z-index: 10;
+            background: rgba(0,0,0,0.2);
+            backdrop-filter: blur(2px);
+            touch-action: none;
         }
 
         .panel.active {
@@ -76,76 +92,86 @@
         }
 
         .panel img.logo {
-            width: 280px;
-            margin-top: -80px;
+            width: 80%;
+            max-width: 280px;
+            margin-top: -15%;
             image-rendering: pixelated;
+            pointer-events: none;
         }
 
         button {
-            margin-top: 40px;
-            padding: 15px 50px;
+            margin-top: 8%;
+            padding: 4% 12%;
             font-family: 'Press Start 2P', sans-serif;
-            font-size: 22px;
+            font-size: clamp(16px, 6vw, 22px);
             color: white;
             background: #ff3366;
-            border: 6px solid white;
-            box-shadow: 0 8px 0 #aa1133;
+            border: 4px solid white;
+            box-shadow: 0 6px 0 #aa1133;
             cursor: pointer;
             transition: all 0.1s;
             text-shadow: 2px 2px 0 #000;
             user-select: none;
+            touch-action: manipulation;
+            border-radius: 0;
+            -webkit-appearance: none;
         }
 
         button:active {
-            transform: translateY(6px);
+            transform: translateY(4px);
             box-shadow: 0 2px 0 #aa1133;
         }
 
         #game-panel {
             justify-content: flex-start;
-            padding-top: 80px;
+            padding-top: 12%;
         }
 
         #board-container {
             position: relative;
-            width: 330px;
-            height: 330px;
+            width: min(330px, 85%);
+            aspect-ratio: 1/1;
             background: url('board.png') no-repeat center center;
             background-size: 100% 100%;
             box-shadow: 0 0 20px rgba(255,255,255,0.6);
-            margin: 20px auto;
+            margin: 4% auto;
+            touch-action: none;
         }
 
         #canvas {
             position: absolute;
             top: 0;
             left: 0;
-            width: 330px;
-            height: 330px;
+            width: 100%;
+            height: 100%;
             image-rendering: pixelated;
             background: transparent;
+            touch-action: none;
+            pointer-events: auto;
         }
 
         #game-header {
             position: absolute;
-            top: 40px;
+            top: 5%;
             width: 100%;
             text-align: center;
-            font-size: 18px;
+            font-size: clamp(12px, 4vw, 18px);
             color: white;
             text-shadow: 3px 3px 0 #000;
             z-index: 20;
+            pointer-events: none;
         }
 
         #score-display {
             position: absolute;
-            bottom: 115px;
+            bottom: 10%;
             width: 100%;
             text-align: center;
-            font-size: 28px;
+            font-size: clamp(20px, 7vw, 28px);
             color: #ffff00;
             text-shadow: 4px 4px 0 #000;
             z-index: 20;
+            pointer-events: none;
         }
 
         #end-panel {
@@ -153,19 +179,35 @@
         }
 
         #end-panel h1 {
-            font-size: 36px;
-            margin-bottom: 20px;
+            font-size: clamp(24px, 8vw, 36px);
+            margin-bottom: 5%;
             text-shadow: 4px 4px 0 #000;
         }
 
         #end-panel p {
-            font-size: 22px;
-            margin: 15px 0;
+            font-size: clamp(14px, 5vw, 22px);
+            margin: 3% 0;
         }
 
         img {
             -webkit-user-drag: none;
             user-drag: none;
+            pointer-events: none;
+        }
+
+        /* mode panel buttons stacked nicely */
+        #mode-panel > div {
+            margin-top: 15%;
+            display: flex;
+            flex-direction: column;
+            gap: 4vh;
+            width: 100%;
+            align-items: center;
+        }
+
+        #mode-panel button {
+            width: 60%;
+            min-width: 180px;
         }
     </style>
 </head>
@@ -185,7 +227,7 @@
             <!-- MODE PANEL -->
             <div class="panel" id="mode-panel">
                 <img src="logo.png" class="logo" alt="Eggag" draggable="false">
-                <div style="margin-top: 60px; display: flex; flex-direction: column; gap: 30px;">
+                <div>
                     <button onclick="selectMode('timed')">TIMED</button>
                     <button onclick="selectMode('turns')">TURNS</button>
                 </div>
@@ -209,12 +251,12 @@
                 <h1>GAME OVER</h1>
                 <p>SCORE: <span id="final-score">0</span></p>
                 <p>HIGH SCORE: <span id="high-score">0</span></p>
-                <button onclick="backToMenu()" style="margin-top: 60px;">BACK</button>
+                <button onclick="backToMenu()" style="margin-top: 10%;">BACK</button>
             </div>
         </div>
     </div>
 
-    <audio id="music" src="music.mp3" loop></audio>
+    <audio id="music" src="music.mp3" loop preload="auto"></audio>
 
     <script>
         // ====================== SETUP ======================
@@ -250,9 +292,33 @@
         let highScore = localStorage.getItem('eggagHigh') || 0;
         let isTransitioning = false;
 
+        // Helper to get canvas-relative coordinates (works for touch and mouse)
+        function getCanvasCoords(e) {
+            const rect = CANVAS.getBoundingClientRect();
+            const scaleX = CANVAS.width / rect.width;
+            const scaleY = CANVAS.height / rect.height;
+
+            let clientX, clientY;
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+
+            // Constrain to canvas rect to avoid weird values
+            const canvasX = Math.min(rect.right, Math.max(rect.left, clientX));
+            const canvasY = Math.min(rect.bottom, Math.max(rect.top, clientY));
+
+            const x = (canvasX - rect.left) * scaleX;
+            const y = (canvasY - rect.top) * scaleY;
+            return { x, y };
+        }
+
         function playSound(src) {
             const audio = new Audio(src);
-            audio.volume = 0.7;
+            audio.volume = 0.5;
             audio.play().catch(() => {});
         }
 
@@ -400,14 +466,26 @@
             return null;
         }
 
-        // ====================== DRAG HANDLERS (now respect gameEnding) ======================
-        function handleGlobalMouseMove(e) {
+        // ====================== TOUCH / MOUSE HANDLERS ======================
+        function handleDragStart(e) {
+            e.preventDefault(); // crucial for touch
+            if (!gameRunning || gameEnding) return;
+
+            const coords = getCanvasCoords(e);
+            const cell = getCell(coords.x, coords.y);
+            if (!cell) return;
+
+            isDragging = true;
+            currentChain = [cell];
+            playEggSound();
+        }
+
+        function handleDragMove(e) {
+            e.preventDefault();
             if (!isDragging || !gameRunning || gameEnding) return;
 
-            const rect = CANVAS.getBoundingClientRect();
-            const mx = e.clientX - rect.left;
-            const my = e.clientY - rect.top;
-            const cell = getCell(mx, my);
+            const coords = getCanvasCoords(e);
+            const cell = getCell(coords.x, coords.y);
             if (!cell) return;
 
             const last = currentChain[currentChain.length - 1];
@@ -424,7 +502,8 @@
             }
         }
 
-        function handleGlobalMouseUp() {
+        function handleDragEnd(e) {
+            e.preventDefault();
             if (!isDragging || !gameRunning || gameEnding) return;
             isDragging = false;
 
@@ -482,25 +561,24 @@
             currentChain = [];
         }
 
-        CANVAS.addEventListener('mousedown', e => {
-            if (!gameRunning || gameEnding) return;
-            const rect = CANVAS.getBoundingClientRect();
-            const mx = e.clientX - rect.left;
-            const my = e.clientY - rect.top;
-            const cell = getCell(mx, my);
-            if (!cell) return;
+        // Unified input listeners (mouse + touch)
+        CANVAS.addEventListener('mousedown', handleDragStart);
+        CANVAS.addEventListener('mousemove', handleDragMove);
+        CANVAS.addEventListener('mouseup', handleDragEnd);
+        CANVAS.addEventListener('mouseleave', handleDragEnd);
 
-            isDragging = true;
-            currentChain = [cell];
-            playEggSound();
-        });
+        CANVAS.addEventListener('touchstart', handleDragStart, { passive: false });
+        CANVAS.addEventListener('touchmove', handleDragMove, { passive: false });
+        CANVAS.addEventListener('touchend', handleDragEnd, { passive: false });
+        CANVAS.addEventListener('touchcancel', handleDragEnd, { passive: false });
 
-        document.addEventListener('mousemove', handleGlobalMouseMove);
-        document.addEventListener('mouseup', handleGlobalMouseUp);
+        // Prevent default touch actions on entire app container
+        APP.addEventListener('touchstart', (e) => { if (e.target === APP) e.preventDefault(); }, { passive: false });
+        APP.addEventListener('touchmove', (e) => { if (e.target === APP) e.preventDefault(); }, { passive: false });
 
-        APP.addEventListener('click', e => {
-            if (e.target.closest('#board-container')) return;
-            if (e.target.tagName !== 'BUTTON') {
+        // Click sound for buttons
+        document.addEventListener('click', e => {
+            if (e.target.tagName === 'BUTTON') {
                 playSound('click.mp3');
             }
         });
@@ -546,7 +624,7 @@
             }
         }
 
-        // ====================== DRAW (board removed from canvas) ======================
+        // ====================== DRAW ======================
         function draw(now) {
             CTX.clearRect(0, 0, WIDTH, HEIGHT);
 
@@ -655,24 +733,26 @@
 
         // ====================== BUTTON HANDLERS ======================
         function playClicked() {
-            playSound('click.mp3');
             switchPanel('mode-panel');
         }
 
         function selectMode(selectedMode) {
-            playSound('click.mp3');
             startGame(selectedMode);
         }
 
         function backToMenu() {
-            playSound('click.mp3');
             switchPanel('menu-panel');
         }
+
+        // Expose to global for button onclick
+        window.playClicked = playClicked;
+        window.selectMode = selectMode;
+        window.backToMenu = backToMenu;
 
         // ====================== MUSIC AUTO-START ======================
         document.addEventListener('click', function initMusic() {
             const musicEl = document.getElementById('music');
-            musicEl.volume = 0.6;
+            musicEl.volume = 0.4;
             musicEl.play().catch(() => {});
             document.removeEventListener('click', initMusic);
         }, { once: true });
