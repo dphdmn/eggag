@@ -1,5 +1,4 @@
-html
-<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -25,8 +24,9 @@ html
             height: 640px;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
             background: #111;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         #bg {
@@ -93,6 +93,7 @@ html
             cursor: pointer;
             transition: all 0.1s;
             text-shadow: 2px 2px 0 #000;
+            user-select: none;
         }
 
         button:active {
@@ -137,7 +138,7 @@ html
 
         #score-display {
             position: absolute;
-            bottom: 80px;
+            bottom: 115px;
             width: 100%;
             text-align: center;
             font-size: 28px;
@@ -161,14 +162,9 @@ html
             margin: 15px 0;
         }
 
-        .overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 30;
+        img {
+            -webkit-user-drag: none;
+            user-drag: none;
         }
     </style>
 </head>
@@ -225,14 +221,14 @@ html
         const CANVAS = document.getElementById('canvas');
         const CTX = CANVAS.getContext('2d', { alpha: true });
         
-        let WIDTH = 330;
-        let HEIGHT = 330;
-        const CELL = 66;
+        const WIDTH = 330;
+        const HEIGHT = 330;
+        const OFFSET = 15;
+        const CELL = 60;
         const GRID_SIZE = 5;
 
         // Assets
         let images = {};
-        let audioContext;
         
         // Game variables
         let grid = [];
@@ -249,17 +245,16 @@ html
         let lastTime = 0;
         let isDragging = false;
         let highScore = localStorage.getItem('eggagHigh') || 0;
+        let isTransitioning = false;
 
-        // Sound helpers
-        function playSound(src, rate = 1) {
+        function playSound(src) {
             const audio = new Audio(src);
-            audio.playbackRate = rate;
             audio.volume = 0.7;
             audio.play().catch(() => {});
         }
 
-        function playEggSound(pitch) {
-            playSound('egg.mp3', pitch);
+        function playEggSound() {
+            playSound('egg.mp3');
         }
 
         // ====================== IMAGE LOADING ======================
@@ -301,24 +296,26 @@ html
             }
         }
 
-        // ====================== PANEL SWITCH ======================
+        // ====================== PANEL SWITCH (with transition lock) ======================
         let currentPanelId = 'menu-panel';
 
         function switchPanel(toId) {
+            if (isTransitioning) return;
+            isTransitioning = true;
+
             const oldPanel = document.getElementById(currentPanelId);
             const newPanel = document.getElementById(toId);
 
-            if (!oldPanel || !newPanel) return;
+            if (!oldPanel || !newPanel) {
+                isTransitioning = false;
+                return;
+            }
 
-            // Prepare new panel
             newPanel.style.display = 'flex';
             newPanel.style.transition = 'none';
             newPanel.style.transform = 'translateX(100%)';
-
-            // Trigger reflow
             void newPanel.offsetWidth;
 
-            // Animate both
             newPanel.style.transition = 'transform 2000ms cubic-bezier(0.25, 0.1, 0.25, 1)';
             newPanel.style.transform = 'translateX(0%)';
 
@@ -329,6 +326,7 @@ html
                 oldPanel.style.display = 'none';
                 oldPanel.style.transform = 'translateX(0%)';
                 currentPanelId = toId;
+                isTransitioning = false;
             }, 2050);
         }
 
@@ -353,21 +351,12 @@ html
             }
             updateHUD();
 
-            // Reset canvas
             CTX.clearRect(0, 0, WIDTH, HEIGHT);
 
-            // Start music if not playing
-            const music = document.getElementById('music');
-            music.volume = 0.6;
-            music.play().catch(() => {});
-
-            // Play start sound
             playSound('game_start.mp3');
 
-            // Show game panel
             switchPanel('game-panel');
 
-            // Start animation loop
             lastTime = performance.now();
             requestAnimationFrame(gameLoop);
         }
@@ -381,29 +370,20 @@ html
             }
         }
 
-        // ====================== INPUT ======================
+        // ====================== INPUT HELPERS ======================
         function getCell(mx, my) {
+            mx -= OFFSET;
+            my -= OFFSET;
             const col = Math.floor(mx / CELL);
             const row = Math.floor(my / CELL);
             if (col < 0 || col >= GRID_SIZE || row < 0 || row >= GRID_SIZE) return null;
             return { r: row, c: col };
         }
 
-        CANVAS.addEventListener('mousedown', e => {
-            if (!gameRunning) return;
-            const rect = CANVAS.getBoundingClientRect();
-            const mx = e.clientX - rect.left;
-            const my = e.clientY - rect.top;
-            const cell = getCell(mx, my);
-            if (!cell) return;
-
-            isDragging = true;
-            currentChain = [cell];
-            playEggSound(1.0);
-        });
-
-        CANVAS.addEventListener('mousemove', e => {
+        // ====================== DRAG HANDLERS ======================
+        function handleGlobalMouseMove(e) {
             if (!isDragging || !gameRunning) return;
+
             const rect = CANVAS.getBoundingClientRect();
             const mx = e.clientX - rect.left;
             const my = e.clientY - rect.top;
@@ -420,28 +400,25 @@ html
 
             if (adjacent && sameType && notInChain) {
                 currentChain.push(cell);
-                const pitch = 1 + (currentChain.length - 1) * 0.18;
-                playEggSound(pitch);
+                playEggSound();
             }
-        });
+        }
 
-        function handleMouseUp() {
+        function handleGlobalMouseUp() {
             if (!isDragging || !gameRunning) return;
             isDragging = false;
 
-            if (currentChain.length >= 1) {
+            if (currentChain.length >= 2) {
                 const len = currentChain.length;
                 score += len * len;
                 updateHUD();
 
                 playSound('chain.mp3');
 
-                // Create effects for every egg in chain
                 currentChain.forEach(pos => {
-                    const cx = pos.c * CELL + CELL / 2;
-                    const cy = pos.r * CELL + CELL / 2;
+                    const cx = OFFSET + pos.c * CELL + CELL / 2;
+                    const cy = OFFSET + pos.r * CELL + CELL / 2;
 
-                    // Floating score
                     floatTexts.push({
                         x: cx,
                         y: cy - 15,
@@ -450,7 +427,6 @@ html
                         vy: -85
                     });
 
-                    // 3 birds per egg
                     for (let i = 0; i < 3; i++) {
                         const offsetX = (Math.random() - 0.5) * 26;
                         const offsetY = (Math.random() - 0.5) * 26;
@@ -470,36 +446,46 @@ html
                         });
                     }
 
-                    // Replace egg with new random one and reset scale
                     grid[pos.r][pos.c] = Math.random() < 0.5 ? 0 : 1;
                     eggScales[pos.r][pos.c] = 0;
                 });
 
-                // Turn logic
                 if (mode === 'turns') {
                     turnsLeft--;
                     updateHUD();
-                    if (turnsLeft <= 0) endGame();
+                    if (turnsLeft <= 0) {
+                        setTimeout(endGame, 1200);
+                    }
                 }
             }
-
             currentChain = [];
         }
 
-        CANVAS.addEventListener('mouseup', handleMouseUp);
-        CANVAS.addEventListener('mouseleave', handleMouseUp);
+        CANVAS.addEventListener('mousedown', e => {
+            if (!gameRunning) return;
+            const rect = CANVAS.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            const cell = getCell(mx, my);
+            if (!cell) return;
 
-        // Click anywhere else on screen (except board) - click sound
-        document.getElementById('app').addEventListener('click', e => {
+            isDragging = true;
+            currentChain = [cell];
+            playEggSound();
+        });
+
+        document.addEventListener('mousemove', handleGlobalMouseMove);
+        document.addEventListener('mouseup', handleGlobalMouseUp);
+
+        APP.addEventListener('click', e => {
             if (e.target.closest('#board-container')) return;
-            if (!gameRunning && e.target.tagName !== 'BUTTON') {
+            if (e.target.tagName !== 'BUTTON') {
                 playSound('click.mp3');
             }
         });
 
-        // ====================== PARTICLE & TEXT UPDATE ======================
+        // ====================== ENTITIES UPDATE ======================
         function updateEntities(delta) {
-            // Float texts
             for (let i = floatTexts.length - 1; i >= 0; i--) {
                 const t = floatTexts[i];
                 t.y += t.vy * (delta / 1000);
@@ -507,12 +493,11 @@ html
                 if (t.alpha <= 0) floatTexts.splice(i, 1);
             }
 
-            // Particles
             for (let i = particles.length - 1; i >= 0; i--) {
                 const p = particles[i];
                 p.x += p.vx * (delta / 1000);
                 p.y += p.vy * (delta / 1000);
-                p.vy += 120 * (delta / 1000); // gentle gravity down
+                p.vy += 120 * (delta / 1000);
                 p.vx *= 0.975;
                 p.vy *= 0.96;
                 p.rot += p.rotSpeed * (delta / 1000);
@@ -522,7 +507,6 @@ html
                 if (p.life <= 0) particles.splice(i, 1);
             }
 
-            // Egg scales (linear expand)
             for (let r = 0; r < GRID_SIZE; r++) {
                 for (let c = 0; c < GRID_SIZE; c++) {
                     if (eggScales[r][c] < 1) {
@@ -531,7 +515,6 @@ html
                 }
             }
 
-            // Timer
             if (gameRunning && mode === 'timed') {
                 timeLeft -= delta / 1000;
                 if (timeLeft <= 0) {
@@ -545,11 +528,8 @@ html
         // ====================== DRAW ======================
         function draw(now) {
             CTX.clearRect(0, 0, WIDTH, HEIGHT);
-
-            // Board background already on div, but we draw on canvas for layers
             CTX.drawImage(images.board, 0, 0, WIDTH, HEIGHT);
 
-            // Draw chain lines (under eggs)
             if (currentChain.length > 1) {
                 CTX.strokeStyle = '#ffffff';
                 CTX.lineWidth = 11;
@@ -559,8 +539,8 @@ html
                 CTX.beginPath();
                 for (let i = 0; i < currentChain.length; i++) {
                     const p = currentChain[i];
-                    const x = p.c * CELL + CELL / 2;
-                    const y = p.r * CELL + CELL / 2;
+                    const x = OFFSET + p.c * CELL + CELL / 2;
+                    const y = OFFSET + p.r * CELL + CELL / 2;
                     if (i === 0) CTX.moveTo(x, y);
                     else CTX.lineTo(x, y);
                 }
@@ -568,7 +548,6 @@ html
                 CTX.shadowBlur = 0;
             }
 
-            // Draw eggs
             const time = now / 280;
             for (let r = 0; r < GRID_SIZE; r++) {
                 for (let c = 0; c < GRID_SIZE; c++) {
@@ -576,17 +555,15 @@ html
                     const scale = eggScales[r][c];
                     if (scale === 0) continue;
 
-                    const cx = c * CELL + CELL / 2;
-                    const cy = r * CELL + CELL / 2;
+                    const cx = OFFSET + c * CELL + CELL / 2;
+                    const cy = OFFSET + r * CELL + CELL / 2;
 
-                    // Wobble
                     const wobble = Math.sin(time + wobbleOffsets[r][c]) * 9 * Math.PI / 180;
 
                     CTX.save();
                     CTX.translate(cx, cy);
                     CTX.rotate(wobble);
 
-                    // Cracked if in current chain
                     let isCracked = false;
                     for (let p of currentChain) {
                         if (p.r === r && p.c === c) {
@@ -598,13 +575,12 @@ html
                     const key = (type === 0 ? 'egg0' : 'egg1') + (isCracked ? '_cracked' : '');
                     const img = images[key];
 
-                    const drawSize = 58 * scale;
+                    const drawSize = 54 * scale;
                     CTX.drawImage(img, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
                     CTX.restore();
                 }
             }
 
-            // Draw floating texts
             CTX.textAlign = 'center';
             CTX.textBaseline = 'middle';
             CTX.font = 'bold 26px "Press Start 2P"';
@@ -615,7 +591,6 @@ html
             }
             CTX.globalAlpha = 1;
 
-            // Draw particles
             for (let p of particles) {
                 CTX.save();
                 CTX.translate(p.x, p.y);
@@ -660,8 +635,6 @@ html
         // ====================== BUTTON HANDLERS ======================
         function playClicked() {
             playSound('click.mp3');
-            const music = document.getElementById('music');
-            music.play().catch(() => {});
             switchPanel('mode-panel');
         }
 
@@ -675,12 +648,18 @@ html
             switchPanel('menu-panel');
         }
 
+        // ====================== MUSIC AUTO-START ON FIRST CLICK ======================
+        document.addEventListener('click', function initMusic() {
+            const musicEl = document.getElementById('music');
+            musicEl.volume = 0.6;
+            musicEl.play().catch(() => {});
+            document.removeEventListener('click', initMusic);
+        }, { once: true });
+
         // ====================== START ======================
         function initialize() {
             loadImages(() => {
-                // All images loaded
                 document.getElementById('menu-panel').classList.add('active');
-                // High score already loaded
             });
         }
 
@@ -688,4 +667,3 @@ html
     </script>
 </body>
 </html>
-
