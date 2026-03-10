@@ -372,16 +372,33 @@
             return { x, y };
         }
 
-        function playSound(src) {
-            if (isMuted) return;
-            const audio = new Audio(src);
-            audio.volume = 0.5;
-            audio.play().catch(() => {});
-        }
+		const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        function playEggSound() {
-            playSound('egg.mp3');
-        }
+		async function playSound(src, pitch = 1.0) {
+			if (isMuted) return;
+
+			const response = await fetch(src);
+			const arrayBuffer = await response.arrayBuffer();
+			const buffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+			const source = audioCtx.createBufferSource();
+			source.buffer = buffer;
+
+			const gain = audioCtx.createGain();
+			gain.gain.value = 0.5;
+
+			// Pitch shift in cents (1200 cents = 1 octave)
+			source.detune.value = Math.log2(pitch) * 1200;
+
+			source.connect(gain);
+			gain.connect(audioCtx.destination);
+
+			source.start();
+		}
+
+        function playEggSound(pitch = 1.0) {
+			playSound('egg.mp3', pitch);
+		}
 
         function loadImages(callback) {
             const files = [
@@ -540,7 +557,7 @@
 
             isDragging = true;
             currentChain = [cell];
-            playEggSound();
+            playEggSound(1.0);
         }
 
         function handleDragMove(e) {
@@ -556,12 +573,14 @@
             const existingIndex = currentChain.findIndex(p => p.r === cell.r && p.c === cell.c);
             
             if (existingIndex !== -1) {
-                if (existingIndex === currentChain.length - 2) {
-                    currentChain.pop();
-                    playEggSound();
-                }
-                return;
-            }
+				if (existingIndex === currentChain.length - 2) {
+					currentChain.pop();
+					// Play descending pitch when backtracking
+					const pitch = Math.max(0.7, 1.0 - (currentChain.length * 0.1));
+					playEggSound(pitch);
+				}
+				return;
+			}
 
             const dr = Math.abs(cell.r - last.r);
             const dc = Math.abs(cell.c - last.c);
@@ -569,9 +588,11 @@
             const adjacent = (dr + dc === 1);
 
             if (adjacent && sameType) {
-                currentChain.push(cell);
-                playEggSound();
-            }
+				currentChain.push(cell);
+				// Calculate pitch: higher for longer chains (1.0 to 2.0 range)
+				const pitch = Math.min(1.0 + (currentChain.length - 1) * 0.15, 2.0);
+				playEggSound(pitch);
+			}
         }
 
         function handleDragEnd(e) {
@@ -584,7 +605,7 @@
                 score += len * len;
                 updateHUD();
 
-                playSound('chain.mp3');
+                playSound('chain.mp3', Math.min(1.0 + len * 0.1, 1.8));
 
                 currentChain.forEach(pos => {
                     const cx = OFFSET + pos.c * CELL + CELL / 2;
