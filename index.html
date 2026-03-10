@@ -590,7 +590,7 @@
             if (adjacent && sameType) {
 				currentChain.push(cell);
 				// Calculate pitch: higher for longer chains (1.0 to 2.0 range)
-				const pitch = Math.min(1.0 + (currentChain.length - 1) * 0.15, 2.0);
+				const pitch = Math.min(1.0 + (currentChain.length - 1) * 0.05, 2.0);
 				playEggSound(pitch);
 			}
         }
@@ -605,7 +605,7 @@
                 score += len * len;
                 updateHUD();
 
-                playSound('chain.mp3', Math.min(1.0 + len * 0.1, 1.8));
+                playSound('chain.mp3', 1.0);
 
                 currentChain.forEach(pos => {
                     const cx = OFFSET + pos.c * CELL + CELL / 2;
