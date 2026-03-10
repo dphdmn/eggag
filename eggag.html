@@ -1,0 +1,691 @@
+html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eggag</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Press Start 2P', sans-serif;
+        }
+
+        #app {
+            width: 360px;
+            height: 640px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+            background: #111;
+        }
+
+        #bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 360px;
+            height: 640px;
+            background-image: url('background.png');
+            background-size: 640px 640px;
+            background-repeat: repeat-x;
+            animation: scrollBg 10s linear infinite;
+            z-index: 1;
+        }
+
+        @keyframes scrollBg {
+            from { background-position-x: 0; }
+            to { background-position-x: -640px; }
+        }
+
+        #panels {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+        }
+
+        .panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            transition: transform 2s cubic-bezier(0.25, 0.1, 0.25, 1);
+            z-index: 10;
+        }
+
+        .panel.active {
+            display: flex;
+        }
+
+        .panel img.logo {
+            width: 280px;
+            margin-top: -80px;
+            image-rendering: pixelated;
+        }
+
+        button {
+            margin-top: 40px;
+            padding: 15px 50px;
+            font-family: 'Press Start 2P', sans-serif;
+            font-size: 22px;
+            color: white;
+            background: #ff3366;
+            border: 6px solid white;
+            box-shadow: 0 8px 0 #aa1133;
+            cursor: pointer;
+            transition: all 0.1s;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        button:active {
+            transform: translateY(6px);
+            box-shadow: 0 2px 0 #aa1133;
+        }
+
+        #game-panel {
+            justify-content: flex-start;
+            padding-top: 80px;
+        }
+
+        #board-container {
+            position: relative;
+            width: 330px;
+            height: 330px;
+            background: url('board.png') no-repeat center center;
+            background-size: 100% 100%;
+            box-shadow: 0 0 20px rgba(255,255,255,0.6);
+            margin: 20px auto;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 330px;
+            height: 330px;
+            image-rendering: pixelated;
+        }
+
+        #game-header {
+            position: absolute;
+            top: 40px;
+            width: 100%;
+            text-align: center;
+            font-size: 18px;
+            color: white;
+            text-shadow: 3px 3px 0 #000;
+            z-index: 20;
+        }
+
+        #score-display {
+            position: absolute;
+            bottom: 80px;
+            width: 100%;
+            text-align: center;
+            font-size: 28px;
+            color: #ffff00;
+            text-shadow: 4px 4px 0 #000;
+            z-index: 20;
+        }
+
+        #end-panel {
+            text-align: center;
+        }
+
+        #end-panel h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            text-shadow: 4px 4px 0 #000;
+        }
+
+        #end-panel p {
+            font-size: 22px;
+            margin: 15px 0;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 30;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Background -->
+        <div id="bg"></div>
+
+        <!-- Panels -->
+        <div id="panels">
+            <!-- MENU PANEL -->
+            <div class="panel active" id="menu-panel">
+                <img src="logo.png" class="logo" alt="Eggag">
+                <button onclick="playClicked()">PLAY</button>
+            </div>
+
+            <!-- MODE PANEL -->
+            <div class="panel" id="mode-panel">
+                <img src="logo.png" class="logo" alt="Eggag">
+                <div style="margin-top: 60px; display: flex; flex-direction: column; gap: 30px;">
+                    <button onclick="selectMode('timed')">TIMED</button>
+                    <button onclick="selectMode('turns')">TURNS</button>
+                </div>
+            </div>
+
+            <!-- GAME PANEL -->
+            <div class="panel" id="game-panel">
+                <div id="game-header">
+                    <span id="mode-text">TIMED</span> • <span id="remaining-text">60</span>
+                </div>
+                
+                <div id="board-container">
+                    <canvas id="canvas" width="330" height="330"></canvas>
+                </div>
+
+                <div id="score-display">SCORE: <span id="score-value">0</span></div>
+            </div>
+
+            <!-- END PANEL -->
+            <div class="panel" id="end-panel">
+                <h1>GAME OVER</h1>
+                <p>SCORE: <span id="final-score">0</span></p>
+                <p>HIGH SCORE: <span id="high-score">0</span></p>
+                <button onclick="backToMenu()" style="margin-top: 60px;">BACK</button>
+            </div>
+        </div>
+    </div>
+
+    <audio id="music" src="music.mp3" loop></audio>
+
+    <script>
+        // ====================== SETUP ======================
+        const APP = document.getElementById('app');
+        const CANVAS = document.getElementById('canvas');
+        const CTX = CANVAS.getContext('2d', { alpha: true });
+        
+        let WIDTH = 330;
+        let HEIGHT = 330;
+        const CELL = 66;
+        const GRID_SIZE = 5;
+
+        // Assets
+        let images = {};
+        let audioContext;
+        
+        // Game variables
+        let grid = [];
+        let eggScales = [];
+        let wobbleOffsets = [];
+        let currentChain = [];
+        let particles = [];
+        let floatTexts = [];
+        let score = 0;
+        let mode = 'timed';
+        let timeLeft = 60;
+        let turnsLeft = 30;
+        let gameRunning = false;
+        let lastTime = 0;
+        let isDragging = false;
+        let highScore = localStorage.getItem('eggagHigh') || 0;
+
+        // Sound helpers
+        function playSound(src, rate = 1) {
+            const audio = new Audio(src);
+            audio.playbackRate = rate;
+            audio.volume = 0.7;
+            audio.play().catch(() => {});
+        }
+
+        function playEggSound(pitch) {
+            playSound('egg.mp3', pitch);
+        }
+
+        // ====================== IMAGE LOADING ======================
+        function loadImages(callback) {
+            const files = [
+                'logo.png', 'board.png',
+                'egg0.png', 'egg1.png',
+                'egg0_cracked.png', 'egg1_cracked.png',
+                'bird.png'
+            ];
+            let loaded = 0;
+
+            files.forEach(src => {
+                const img = new Image();
+                img.onload = () => {
+                    images[src.replace('.png', '')] = img;
+                    loaded++;
+                    if (loaded === files.length) callback();
+                };
+                img.src = src;
+            });
+        }
+
+        // ====================== GRID INIT ======================
+        function initGrid() {
+            grid = [];
+            eggScales = [];
+            wobbleOffsets = [];
+            for (let r = 0; r < GRID_SIZE; r++) {
+                let rowG = [], rowS = [], rowW = [];
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    rowG.push(Math.random() < 0.5 ? 0 : 1);
+                    rowS.push(0);
+                    rowW.push(Math.random() * Math.PI * 2);
+                }
+                grid.push(rowG);
+                eggScales.push(rowS);
+                wobbleOffsets.push(rowW);
+            }
+        }
+
+        // ====================== PANEL SWITCH ======================
+        let currentPanelId = 'menu-panel';
+
+        function switchPanel(toId) {
+            const oldPanel = document.getElementById(currentPanelId);
+            const newPanel = document.getElementById(toId);
+
+            if (!oldPanel || !newPanel) return;
+
+            // Prepare new panel
+            newPanel.style.display = 'flex';
+            newPanel.style.transition = 'none';
+            newPanel.style.transform = 'translateX(100%)';
+
+            // Trigger reflow
+            void newPanel.offsetWidth;
+
+            // Animate both
+            newPanel.style.transition = 'transform 2000ms cubic-bezier(0.25, 0.1, 0.25, 1)';
+            newPanel.style.transform = 'translateX(0%)';
+
+            oldPanel.style.transition = 'transform 2000ms cubic-bezier(0.25, 0.1, 0.25, 1)';
+            oldPanel.style.transform = 'translateX(-100%)';
+
+            setTimeout(() => {
+                oldPanel.style.display = 'none';
+                oldPanel.style.transform = 'translateX(0%)';
+                currentPanelId = toId;
+            }, 2050);
+        }
+
+        // ====================== GAME INIT ======================
+        function startGame(selectedMode) {
+            mode = selectedMode;
+            score = 0;
+            currentChain = [];
+            particles = [];
+            floatTexts = [];
+            isDragging = false;
+            gameRunning = true;
+
+            initGrid();
+
+            if (mode === 'timed') {
+                timeLeft = 60;
+                document.getElementById('mode-text').textContent = 'TIMED';
+            } else {
+                turnsLeft = 30;
+                document.getElementById('mode-text').textContent = 'TURNS';
+            }
+            updateHUD();
+
+            // Reset canvas
+            CTX.clearRect(0, 0, WIDTH, HEIGHT);
+
+            // Start music if not playing
+            const music = document.getElementById('music');
+            music.volume = 0.6;
+            music.play().catch(() => {});
+
+            // Play start sound
+            playSound('game_start.mp3');
+
+            // Show game panel
+            switchPanel('game-panel');
+
+            // Start animation loop
+            lastTime = performance.now();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateHUD() {
+            document.getElementById('score-value').textContent = score;
+            if (mode === 'timed') {
+                document.getElementById('remaining-text').textContent = Math.ceil(timeLeft);
+            } else {
+                document.getElementById('remaining-text').textContent = turnsLeft;
+            }
+        }
+
+        // ====================== INPUT ======================
+        function getCell(mx, my) {
+            const col = Math.floor(mx / CELL);
+            const row = Math.floor(my / CELL);
+            if (col < 0 || col >= GRID_SIZE || row < 0 || row >= GRID_SIZE) return null;
+            return { r: row, c: col };
+        }
+
+        CANVAS.addEventListener('mousedown', e => {
+            if (!gameRunning) return;
+            const rect = CANVAS.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            const cell = getCell(mx, my);
+            if (!cell) return;
+
+            isDragging = true;
+            currentChain = [cell];
+            playEggSound(1.0);
+        });
+
+        CANVAS.addEventListener('mousemove', e => {
+            if (!isDragging || !gameRunning) return;
+            const rect = CANVAS.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            const cell = getCell(mx, my);
+            if (!cell) return;
+
+            const last = currentChain[currentChain.length - 1];
+            const dr = Math.abs(cell.r - last.r);
+            const dc = Math.abs(cell.c - last.c);
+
+            const sameType = grid[cell.r][cell.c] === grid[last.r][last.c];
+            const adjacent = (dr + dc === 1);
+            const notInChain = !currentChain.some(p => p.r === cell.r && p.c === cell.c);
+
+            if (adjacent && sameType && notInChain) {
+                currentChain.push(cell);
+                const pitch = 1 + (currentChain.length - 1) * 0.18;
+                playEggSound(pitch);
+            }
+        });
+
+        function handleMouseUp() {
+            if (!isDragging || !gameRunning) return;
+            isDragging = false;
+
+            if (currentChain.length >= 1) {
+                const len = currentChain.length;
+                score += len * len;
+                updateHUD();
+
+                playSound('chain.mp3');
+
+                // Create effects for every egg in chain
+                currentChain.forEach(pos => {
+                    const cx = pos.c * CELL + CELL / 2;
+                    const cy = pos.r * CELL + CELL / 2;
+
+                    // Floating score
+                    floatTexts.push({
+                        x: cx,
+                        y: cy - 15,
+                        text: len.toString(),
+                        alpha: 1,
+                        vy: -85
+                    });
+
+                    // 3 birds per egg
+                    for (let i = 0; i < 3; i++) {
+                        const offsetX = (Math.random() - 0.5) * 26;
+                        const offsetY = (Math.random() - 0.5) * 26;
+                        const angle = Math.random() * Math.PI * 2;
+                        const speed = 80 + Math.random() * 110;
+
+                        particles.push({
+                            x: cx + offsetX,
+                            y: cy + offsetY,
+                            vx: Math.cos(angle) * speed,
+                            vy: Math.sin(angle) * speed - 140,
+                            rot: Math.random() * Math.PI * 2,
+                            rotSpeed: (Math.random() - 0.5) * 12,
+                            scale: 0.7 + Math.random() * 0.6,
+                            alpha: 1,
+                            life: 950
+                        });
+                    }
+
+                    // Replace egg with new random one and reset scale
+                    grid[pos.r][pos.c] = Math.random() < 0.5 ? 0 : 1;
+                    eggScales[pos.r][pos.c] = 0;
+                });
+
+                // Turn logic
+                if (mode === 'turns') {
+                    turnsLeft--;
+                    updateHUD();
+                    if (turnsLeft <= 0) endGame();
+                }
+            }
+
+            currentChain = [];
+        }
+
+        CANVAS.addEventListener('mouseup', handleMouseUp);
+        CANVAS.addEventListener('mouseleave', handleMouseUp);
+
+        // Click anywhere else on screen (except board) - click sound
+        document.getElementById('app').addEventListener('click', e => {
+            if (e.target.closest('#board-container')) return;
+            if (!gameRunning && e.target.tagName !== 'BUTTON') {
+                playSound('click.mp3');
+            }
+        });
+
+        // ====================== PARTICLE & TEXT UPDATE ======================
+        function updateEntities(delta) {
+            // Float texts
+            for (let i = floatTexts.length - 1; i >= 0; i--) {
+                const t = floatTexts[i];
+                t.y += t.vy * (delta / 1000);
+                t.alpha -= 1.8 * (delta / 1000);
+                if (t.alpha <= 0) floatTexts.splice(i, 1);
+            }
+
+            // Particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx * (delta / 1000);
+                p.y += p.vy * (delta / 1000);
+                p.vy += 120 * (delta / 1000); // gentle gravity down
+                p.vx *= 0.975;
+                p.vy *= 0.96;
+                p.rot += p.rotSpeed * (delta / 1000);
+                p.scale *= 0.975;
+                p.life -= delta;
+                p.alpha = Math.max(0, p.life / 950);
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            // Egg scales (linear expand)
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    if (eggScales[r][c] < 1) {
+                        eggScales[r][c] = Math.min(1, eggScales[r][c] + delta / 380);
+                    }
+                }
+            }
+
+            // Timer
+            if (gameRunning && mode === 'timed') {
+                timeLeft -= delta / 1000;
+                if (timeLeft <= 0) {
+                    timeLeft = 0;
+                    endGame();
+                }
+                updateHUD();
+            }
+        }
+
+        // ====================== DRAW ======================
+        function draw(now) {
+            CTX.clearRect(0, 0, WIDTH, HEIGHT);
+
+            // Board background already on div, but we draw on canvas for layers
+            CTX.drawImage(images.board, 0, 0, WIDTH, HEIGHT);
+
+            // Draw chain lines (under eggs)
+            if (currentChain.length > 1) {
+                CTX.strokeStyle = '#ffffff';
+                CTX.lineWidth = 11;
+                CTX.lineCap = 'round';
+                CTX.shadowBlur = 12;
+                CTX.shadowColor = '#ffffff';
+                CTX.beginPath();
+                for (let i = 0; i < currentChain.length; i++) {
+                    const p = currentChain[i];
+                    const x = p.c * CELL + CELL / 2;
+                    const y = p.r * CELL + CELL / 2;
+                    if (i === 0) CTX.moveTo(x, y);
+                    else CTX.lineTo(x, y);
+                }
+                CTX.stroke();
+                CTX.shadowBlur = 0;
+            }
+
+            // Draw eggs
+            const time = now / 280;
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    const type = grid[r][c];
+                    const scale = eggScales[r][c];
+                    if (scale === 0) continue;
+
+                    const cx = c * CELL + CELL / 2;
+                    const cy = r * CELL + CELL / 2;
+
+                    // Wobble
+                    const wobble = Math.sin(time + wobbleOffsets[r][c]) * 9 * Math.PI / 180;
+
+                    CTX.save();
+                    CTX.translate(cx, cy);
+                    CTX.rotate(wobble);
+
+                    // Cracked if in current chain
+                    let isCracked = false;
+                    for (let p of currentChain) {
+                        if (p.r === r && p.c === c) {
+                            isCracked = true;
+                            break;
+                        }
+                    }
+
+                    const key = (type === 0 ? 'egg0' : 'egg1') + (isCracked ? '_cracked' : '');
+                    const img = images[key];
+
+                    const drawSize = 58 * scale;
+                    CTX.drawImage(img, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+                    CTX.restore();
+                }
+            }
+
+            // Draw floating texts
+            CTX.textAlign = 'center';
+            CTX.textBaseline = 'middle';
+            CTX.font = 'bold 26px "Press Start 2P"';
+            for (let t of floatTexts) {
+                CTX.globalAlpha = Math.max(0, t.alpha);
+                CTX.fillStyle = '#ffff66';
+                CTX.fillText(t.text, t.x, t.y);
+            }
+            CTX.globalAlpha = 1;
+
+            // Draw particles
+            for (let p of particles) {
+                CTX.save();
+                CTX.translate(p.x, p.y);
+                CTX.rotate(p.rot);
+                CTX.globalAlpha = p.alpha;
+                CTX.scale(p.scale, p.scale);
+                CTX.drawImage(images.bird, -18, -18, 36, 36);
+                CTX.restore();
+            }
+        }
+
+        // ====================== GAME LOOP ======================
+        function gameLoop(now) {
+            if (!gameRunning) return;
+
+            const delta = Math.min(now - lastTime, 80);
+            lastTime = now;
+
+            updateEntities(delta);
+            draw(now);
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ====================== GAME OVER ======================
+        function endGame() {
+            gameRunning = false;
+            const finalScoreEl = document.getElementById('final-score');
+            const highScoreEl = document.getElementById('high-score');
+
+            finalScoreEl.textContent = score;
+
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('eggagHigh', highScore);
+            }
+            highScoreEl.textContent = highScore;
+
+            switchPanel('end-panel');
+        }
+
+        // ====================== BUTTON HANDLERS ======================
+        function playClicked() {
+            playSound('click.mp3');
+            const music = document.getElementById('music');
+            music.play().catch(() => {});
+            switchPanel('mode-panel');
+        }
+
+        function selectMode(selectedMode) {
+            playSound('click.mp3');
+            startGame(selectedMode);
+        }
+
+        function backToMenu() {
+            playSound('click.mp3');
+            switchPanel('menu-panel');
+        }
+
+        // ====================== START ======================
+        function initialize() {
+            loadImages(() => {
+                // All images loaded
+                document.getElementById('menu-panel').classList.add('active');
+                // High score already loaded
+            });
+        }
+
+        window.onload = initialize;
+    </script>
+</body>
+</html>
+
