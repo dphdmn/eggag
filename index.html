@@ -52,11 +52,12 @@
             animation: scrollBg 10s linear infinite;
             z-index: 1;
             pointer-events: none;
+            image-rendering: pixelated;
         }
 
         @keyframes scrollBg {
-            from { background-position-x: 0; }
-            to { background-position-x: -100%; }
+            0% { background-position-x: 0; }
+            100% { background-position-x: -100%; }
         }
 
         #panels {
@@ -444,7 +445,6 @@
 
             playSound('game_start.mp3');
 
-            // If we're already on game panel, restart without panel transition
             if (currentPanelId === 'game-panel') {
                 lastTime = performance.now();
                 gameRunning = true;
@@ -518,14 +518,28 @@
             if (!cell) return;
 
             const last = currentChain[currentChain.length - 1];
+            
+            // Check if we're moving back to an already selected egg
+            const existingIndex = currentChain.findIndex(p => p.r === cell.r && p.c === cell.c);
+            
+            if (existingIndex !== -1) {
+                // If we're going back to a previous egg, trim the chain to that point
+                // But only if it's the previous egg (allows smooth backtracking)
+                if (existingIndex === currentChain.length - 2) {
+                    // Remove the last egg (backtrack one step)
+                    currentChain.pop();
+                    playEggSound();
+                }
+                return;
+            }
+
             const dr = Math.abs(cell.r - last.r);
             const dc = Math.abs(cell.c - last.c);
 
             const sameType = grid[cell.r][cell.c] === grid[last.r][last.c];
             const adjacent = (dr + dc === 1);
-            const notInChain = !currentChain.some(p => p.r === cell.r && p.c === cell.c);
 
-            if (adjacent && sameType && notInChain) {
+            if (adjacent && sameType) {
                 currentChain.push(cell);
                 playEggSound();
             }
@@ -753,17 +767,14 @@
             switchPanel('end-panel');
         }
 
-        // Fixed restart function - immediate reset without panel transition
         function restartGame() {
             if (!gameRunning && currentPanelId !== 'game-panel') return;
             
-            // Stop current game
             gameRunning = false;
             gameEnding = false;
             isDragging = false;
             timerActive = false;
             
-            // Reset all game state
             score = 0;
             currentChain = [];
             particles = [];
@@ -780,7 +791,6 @@
             updateHUD();
             CTX.clearRect(0, 0, WIDTH, HEIGHT);
             
-            // Start fresh
             lastTime = performance.now();
             gameRunning = true;
             requestAnimationFrame(gameLoop);
